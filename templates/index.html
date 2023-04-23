@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETF Portfolio Optimizer</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 700px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5 mb-4 text-center">ETF Portfolio Optimizer</h1>
+        <form id="etf-form" class="mb-4">
+            <div class="form-group">
+                {% for etf in etfs %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="etf" value="{{ etf.symbol }}" id="{{ etf.symbol }}">
+                        <label class="form-check-label" for="{{ etf.symbol }}">
+                            {{ etf.name }} ({{ etf.symbol }})
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary">Optimize</button>
+        </form>
+        <h2 class="mb-3">Optimal Weights</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <ul id="results" class="list-unstyled"></ul>
+            </div>
+            <div class="col-md-6">
+                <canvas id="portfolio-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            const chartContext = document.getElementById('portfolio-chart').getContext('2d');
+            const chartColors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'];
+            const portfolioChart = new Chart(chartContext, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: chartColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+
+            $('#etf-form').submit(function(event) {
+                event.preventDefault();
+                const formData = $(this).serialize();
+
+                $.post('/optimize', formData, function(data) {
+                    const results = data;
+                    const resultContainer = $('#results');
+                    resultContainer.empty();
+
+                    portfolioChart.data.labels = results.selected_etfs;
+                    portfolioChart.data.datasets[0].data = results.optimal_weights.map(weight => (weight * 100).toFixed(2));
+                    portfolioChart.update();
+
+                    results.selected_etfs.forEach(function(etf, index) {
+                        const listItem = $('<li>');
+                        listItem.text(etf + ': ' + (results.optimal_weights[index] * 100).toFixed(2) + '%');
+                        resultContainer.append(listItem);
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
